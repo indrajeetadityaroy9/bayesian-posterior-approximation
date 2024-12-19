@@ -1,5 +1,5 @@
-# MLP for Class Posterior Approximation and MAP Classification
-Training multilayer perceptrons (MLPs) to approximate class posterior distributions for a 4-class, 3-dimensional Gaussian classification problem, and then using these trained models to implement a MAP classifier.Implementation compares the MLP-based MAP classifier’s error against the theoretically optimal Bayes classifier.
+# MLP-Based Bayesian Classification: Approximating Class Posteriors for Gaussian Mixtures
+Training a two-layer Multilayer Perceptron (MLP) to approximate class posterior probabilities in a challenging 4-class, 3-dimensional Gaussian classification problem. By carefully choosing class distributions to ensure a non-trivial Bayes error (around 10–20%), a scenario is created where perfect classification is impossible, making the MLP’s approximation abilities critical. After training the MLP via maximum likelihood estimation (minimizing cross-entropy loss),a MAP decision rule is applied using the network’s predicted posteriors. The resulting MLP-based classifier is then evaluated on a large test set and directly compared to the theoretically optimal Bayes classifier, illustrating how the MLP’s performance approaches—and potentially narrows the gap to—the fundamental limit of optimal classification as the size of the training set increases.
 
 ## Overview
 
