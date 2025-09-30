@@ -393,9 +393,7 @@ class SOTAPaperResultsGenerator:
 
         print(f"  Comparison plots saved to {self.results_dir}")
 
-    def save_comprehensive_results(self, results,
-                                 results_df, bayes_error):
-
+    def save_comprehensive_results(self, results, results_df, bayes_error):
         print("Saving comprehensive results...")
 
         with open(self.results_dir / 'raw_sota_results.json', 'w') as f:
@@ -444,14 +442,8 @@ class SOTAPaperResultsGenerator:
         print(f"  Results saved to {self.results_dir}")
 
     def run_complete_analysis(self, n_runs=2):
-
-        if not torch.cuda.is_available():
-            print("CUDA not available, using CPU (this may be slow)")
-
         bayes_error = self.compute_bayes_error()
-
         results = self.run_comprehensive_comparison(n_runs)
-
         results_df = self.analyze_results(results, bayes_error)
 
         if len(results_df) == 0:
@@ -459,7 +451,6 @@ class SOTAPaperResultsGenerator:
             return results
 
         self.create_comparison_plots(results_df, bayes_error)
-
         self.save_comprehensive_results(results, results_df, bayes_error)
 
         print("\n" + "=" * 80)
@@ -474,13 +465,9 @@ class SOTAPaperResultsGenerator:
 
 
 if __name__ == "__main__":
-    try:
-        import torch
-        print(f"PyTorch available: {torch.__version__}")
-        print(f"CUDA available: {torch.cuda.is_available()}")
-    except ImportError:
-        print("PyTorch not available. Please install with: pip install torch")
-        exit(1)
+    import torch
+    print(f"PyTorch available: {torch.__version__}")
+    print(f"CUDA available: {torch.cuda.is_available()}")
 
     generator = SOTAPaperResultsGenerator(random_seed=42)
     results = generator.run_complete_analysis(n_runs=2)

@@ -340,11 +340,8 @@ class AdvancedTrainer:
         return predictions, probabilities, uncertainty
 
     def get_metrics_df(self):
-        try:
-            import pandas as pd
-            return pd.DataFrame([asdict(m) for m in self.metrics_history])
-        except ImportError:
-            return [asdict(m) for m in self.metrics_history]
+        import pandas as pd
+        return pd.DataFrame([asdict(m) for m in self.metrics_history])
 
     def save_model(self, path):
         torch.save({
