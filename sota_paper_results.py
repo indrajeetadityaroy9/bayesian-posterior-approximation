@@ -41,15 +41,15 @@ class SOTAPaperResultsGenerator:
             'priors': np.array([0.25, 0.25, 0.25, 0.25]),
             'meanVectors': np.array([
                 [0.0, 0.0, 0.0],
-                [2.5, 0.0, 0.0],
-                [5.0, 0.0, 0.0],
-                [7.5, 0.0, 0.0]
+                [4.0, 4.0, 0.0],
+                [0.0, 4.0, 4.0],
+                [4.0, 0.0, 4.0]
             ]),
             'covMatrices': np.array([
-                [[1.0, 0.3, 1.4], [0.3, 1.0, 0.3], [1.4, 0.3, 7.0]],
-                [[1.0, -0.4, -0.7], [-0.4, 1.0, -0.4], [-0.7, -0.4, 3.0]],
-                [[1.0, 0.4, 0.7], [0.4, 1.0, 0.4], [0.7, 0.4, 3.0]],
-                [[1.0, -0.3, -1.4], [-0.3, 1.0, -0.3], [-1.4, -0.3, 7.0]]
+                [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+                [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+                [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+                [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
             ])
         }
 
@@ -64,71 +64,81 @@ class SOTAPaperResultsGenerator:
 
         configs = {}
 
-        configs['sota_basic'] = AdvancedMLPConfig(
-            hidden_dims=[128, 256, 128],
-            activation='relu',
-            use_batch_norm=True,
-            use_residual=False,
-            uncertainty_method='none',
-            max_epochs=200,
-            learning_rate=1e-3,
-            batch_size=64
-        )
+        basic = AdvancedMLPConfig()
+        basic.hidden_dims = [128, 256, 128]
+        basic.activation = 'relu'
+        basic.use_batch_norm = True
+        basic.use_residual = False
+        basic.uncertainty_method = 'none'
+        basic.max_epochs = 200
+        basic.learning_rate = 1e-3
+        basic.batch_size = 64
+        configs['sota_basic'] = basic
 
-        configs['sota_advanced'] = AdvancedMLPConfig(
-            hidden_dims=[128, 256, 256, 128],
-            activation='swish',
-            use_batch_norm=True,
-            use_residual=True,
-            use_mixup=True,
-            uncertainty_method='none',
-            max_epochs=300,
-            learning_rate=1e-3,
-            batch_size=64,
-            weight_decay=1e-4,
-            label_smoothing=0.1
-        )
+        advanced = AdvancedMLPConfig()
+        advanced.hidden_dims = [128, 256, 256, 128]
+        advanced.activation = 'swish'
+        advanced.use_batch_norm = True
+        advanced.use_residual = True
+        advanced.use_mixup = True
+        advanced.uncertainty_method = 'none'
+        advanced.max_epochs = 300
+        advanced.learning_rate = 1e-3
+        advanced.batch_size = 64
+        advanced.weight_decay = 1e-4
+        advanced.label_smoothing = 0.1
+        configs['sota_advanced'] = advanced
 
-        configs['sota_mc_dropout'] = AdvancedMLPConfig(
-            hidden_dims=[128, 256, 128],
-            activation='swish',
-            use_batch_norm=True,
-            dropout_rates=[0.2, 0.3, 0.2],
-            uncertainty_method='mc_dropout',
-            mc_samples=100,
-            max_epochs=250,
-            learning_rate=1e-3,
-            batch_size=64
-        )
+        mc_dropout = AdvancedMLPConfig()
+        mc_dropout.hidden_dims = [128, 256, 128]
+        mc_dropout.activation = 'swish'
+        mc_dropout.use_batch_norm = True
+        mc_dropout.dropout_rates = [0.1, 0.15, 0.1]
+        mc_dropout.uncertainty_method = 'mc_dropout'
+        mc_dropout.mc_samples = 100
+        mc_dropout.max_epochs = 250
+        mc_dropout.learning_rate = 1e-3
+        mc_dropout.batch_size = 64
+        mc_dropout.use_mixup = False
+        mc_dropout.label_smoothing = 0.0
+        mc_dropout.weight_decay = 1e-5
+        configs['sota_mc_dropout'] = mc_dropout
 
-        configs['sota_bayesian'] = AdvancedMLPConfig(
-            hidden_dims=[128, 256, 128],
-            activation='relu',
-            uncertainty_method='bayesian',
-            max_epochs=300,
-            learning_rate=5e-4,
-            batch_size=32
-        )
+        bayesian = AdvancedMLPConfig()
+        bayesian.hidden_dims = [128, 256, 128]
+        bayesian.activation = 'relu'
+        bayesian.uncertainty_method = 'bayesian'
+        bayesian.max_epochs = 300
+        bayesian.learning_rate = 5e-4
+        bayesian.batch_size = 32
+        configs['sota_bayesian'] = bayesian
 
-        configs['sota_ensemble'] = AdvancedMLPConfig(
-            hidden_dims=[128, 256, 128],
-            activation='swish',
-            use_batch_norm=True,
-            uncertainty_method='ensemble',
-            num_ensemble_models=5,
-            max_epochs=200,
-            learning_rate=1e-3,
-            batch_size=64
-        )
+        ensemble = AdvancedMLPConfig()
+        ensemble.hidden_dims = [128, 256, 128]
+        ensemble.activation = 'swish'
+        ensemble.use_batch_norm = True
+        ensemble.uncertainty_method = 'ensemble'
+        ensemble.num_ensemble_models = 5
+        ensemble.max_epochs = 200
+        ensemble.learning_rate = 1e-3
+        ensemble.batch_size = 64
+        configs['sota_ensemble'] = ensemble
 
         return configs
 
-    def compute_bayes_error(self, n_samples=50000):
+    def compute_bayes_error(self, n_samples=100000):
         print("Computing theoretical Bayes error...")
         X_test, y_test = generate_data(n_samples, self.gmm_params)
         y_bayes = classify_with_gmm(X_test, self.gmm_params)
         bayes_error = estimate_error(y_bayes, y_test)
-        print(f"Theoretical Bayes error: {bayes_error:.4f}")
+        print(f"Theoretical Bayes error: {bayes_error:.4f} (computed on {n_samples} samples)")
+
+        # Compute per-class accuracy for diagnostics
+        from sklearn.metrics import confusion_matrix
+        cm = confusion_matrix(y_test, y_bayes)
+        per_class_acc = cm.diagonal() / cm.sum(axis=1)
+        print(f"Per-class Bayes accuracies: {per_class_acc}")
+
         return bayes_error
 
     def run_single_experiment(self,

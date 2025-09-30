@@ -23,15 +23,15 @@ def test_sota_components():
         'priors': np.array([0.25, 0.25, 0.25, 0.25]),
         'meanVectors': np.array([
             [0.0, 0.0, 0.0],
-            [2.5, 0.0, 0.0],
-            [5.0, 0.0, 0.0],
-            [7.5, 0.0, 0.0]
+            [4.0, 4.0, 0.0],
+            [0.0, 4.0, 4.0],
+            [4.0, 0.0, 4.0]
         ]),
         'covMatrices': np.array([
-            [[1.0, 0.3, 1.4], [0.3, 1.0, 0.3], [1.4, 0.3, 7.0]],
-            [[1.0, -0.4, -0.7], [-0.4, 1.0, -0.4], [-0.7, -0.4, 3.0]],
-            [[1.0, 0.4, 0.7], [0.4, 1.0, 0.4], [0.7, 0.4, 3.0]],
-            [[1.0, -0.3, -1.4], [-0.3, 1.0, -0.3], [-1.4, -0.3, 7.0]]
+            [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+            [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+            [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]],
+            [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
         ])
     }
 
@@ -41,25 +41,26 @@ def test_sota_components():
 
     print("\n2. Testing SOTA architectures...")
 
-    config_basic = AdvancedMLPConfig(
-        hidden_dims=[64, 128, 64],
-        activation='swish',
-        use_batch_norm=True,
-        max_epochs=20,
-        batch_size=32
-    )
+    config_basic = AdvancedMLPConfig()
+    config_basic.hidden_dims = [64, 128, 64]
+    config_basic.activation = 'swish'
+    config_basic.use_batch_norm = True
+    config_basic.max_epochs = 20
+    config_basic.batch_size = 32
     model_basic = create_model(config_basic)
     print(f"  Basic SOTA MLP created: {sum(p.numel() for p in model_basic.parameters())} parameters")
 
-    config_dropout = AdvancedMLPConfig(
-        hidden_dims=[64, 128, 64],
-        activation='relu',
-        dropout_rates=[0.2, 0.3, 0.2],
-        uncertainty_method='mc_dropout',
-        mc_samples=50,
-        max_epochs=20,
-        batch_size=32
-    )
+    config_dropout = AdvancedMLPConfig()
+    config_dropout.hidden_dims = [64, 128, 64]
+    config_dropout.activation = 'swish'
+    config_dropout.dropout_rates = [0.1, 0.15, 0.1]
+    config_dropout.uncertainty_method = 'mc_dropout'
+    config_dropout.mc_samples = 50
+    config_dropout.max_epochs = 20
+    config_dropout.batch_size = 32
+    config_dropout.use_mixup = False
+    config_dropout.label_smoothing = 0.0
+    config_dropout.weight_decay = 1e-5
     model_dropout = create_model(config_dropout)
     print(f"  MC Dropout MLP created: {sum(p.numel() for p in model_dropout.parameters())} parameters")
 
@@ -139,22 +140,27 @@ def test_minimal_sota_experiment():
         generator.training_sizes = [100, 500]
         generator.test_size = 2000
 
+        config1 = AdvancedMLPConfig()
+        config1.hidden_dims = [64, 128, 64]
+        config1.activation = 'swish'
+        config1.use_batch_norm = True
+        config1.max_epochs = 30
+        config1.batch_size = 32
+
+        config2 = AdvancedMLPConfig()
+        config2.hidden_dims = [64, 128, 64]
+        config2.dropout_rates = [0.1, 0.15, 0.1]
+        config2.uncertainty_method = 'mc_dropout'
+        config2.mc_samples = 20
+        config2.max_epochs = 30
+        config2.batch_size = 32
+        config2.use_mixup = False
+        config2.label_smoothing = 0.0
+        config2.weight_decay = 1e-5
+
         generator.model_configs = {
-            'sota_basic': AdvancedMLPConfig(
-                hidden_dims=[64, 128, 64],
-                activation='swish',
-                use_batch_norm=True,
-                max_epochs=30,
-                batch_size=32
-            ),
-            'sota_mc_dropout': AdvancedMLPConfig(
-                hidden_dims=[64, 128, 64],
-                dropout_rates=[0.2, 0.3, 0.2],
-                uncertainty_method='mc_dropout',
-                mc_samples=20,
-                max_epochs=30,
-                batch_size=32
-            )
+            'sota_basic': config1,
+            'sota_mc_dropout': config2
         }
 
         print("Running minimal SOTA ML comparison...")
