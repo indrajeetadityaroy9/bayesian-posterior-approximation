@@ -116,11 +116,14 @@ class ModelEnsemble:
 
         epistemic = predictions.var(dim=0).sum(dim=1)
 
+        logits = torch.log(mean_pred.clamp_min(1e-8))
+
         return {
             'predictions': mean_pred,
             'aleatoric_uncertainty': aleatoric,
             'epistemic_uncertainty': epistemic,
-            'total_uncertainty': aleatoric + epistemic
+            'total_uncertainty': aleatoric + epistemic,
+            'logits': logits
         }
 
 
@@ -233,9 +236,12 @@ class AdvancedTrainer:
                 data, targets = data.to(self.device), targets.to(self.device)
 
                 if isinstance(self.model, MCDropoutMLP):
-                    outputs, uncertainty = self.model.mc_forward(data, self.config.mc_samples)
-                    loss = self.criterion(outputs.log(), targets)
-                    uncertainty_scores.extend(uncertainty.sum(dim=1).cpu().numpy())
+                    probs, variance, log_probs = self.model.mc_forward(
+                        data, self.config.mc_samples
+                    )
+                    loss = self._loss_from_probs(probs, targets)
+                    uncertainty_scores.extend(variance.sum(dim=1).cpu().numpy())
+                    outputs = probs
                 else:
                     outputs = self.model(data)
                     loss = self.criterion(outputs, targets)
@@ -325,8 +331,11 @@ class AdvancedTrainer:
 
         with torch.no_grad():
             if isinstance(self.model, MCDropoutMLP):
-                probs, uncertainty = self.model.mc_forward(X_tensor, self.config.mc_samples)
-                uncertainty = uncertainty.sum(dim=1).cpu().numpy()
+                probs, variance, log_probs = self.model.mc_forward(
+                    X_tensor, self.config.mc_samples
+                )
+                uncertainty = variance.sum(dim=1).cpu().numpy()
+                logits = log_probs
             else:
                 logits = self.model(X_tensor)
                 probs = F.softmax(logits, dim=1)
@@ -336,8 +345,24 @@ class AdvancedTrainer:
 
             predictions = probs.argmax(dim=1).cpu().numpy()
             probabilities = probs.cpu().numpy()
+            logits_array = logits.cpu().numpy()
 
-        return predictions, probabilities, uncertainty
+        return predictions, probabilities, uncertainty, logits_array
+
+    def _loss_from_probs(self, probs, targets):
+        probs = probs.clamp_min(1e-8)
+
+        if self.config.label_smoothing > 0 and probs.size(1) > 1:
+            num_classes = probs.size(1)
+            smoothing = self.config.label_smoothing
+            smooth_value = smoothing / (num_classes - 1)
+            target_probs = torch.full_like(probs, smooth_value)
+            target_probs.scatter_(1, targets.unsqueeze(1), 1 - smoothing)
+            loss = -(target_probs * probs.log()).sum(dim=1).mean()
+        else:
+            loss = F.nll_loss(probs.log(), targets)
+
+        return loss
 
     def get_metrics_df(self):
         import pandas as pd

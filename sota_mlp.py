@@ -283,20 +283,34 @@ class MCDropoutMLP(AdvancedMLP):
         super().__init__(config)
 
     def mc_forward(self, x, num_samples=100):
-        self.train()
+        previous_mode = self.training
+        # Activate dropout while preventing BatchNorm layers from updating statistics
+        self.train(True)
 
-        outputs = []
-        for _ in range(num_samples):
-            with torch.no_grad():
-                logits = self.forward(x)
-                probs = F.softmax(logits, dim=1)
-                outputs.append(probs)
+        bn_modules = []
+        for module in self.modules():
+            if isinstance(module, (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d)):
+                bn_modules.append((module, module.training))
+                module.eval()
 
-        outputs = torch.stack(outputs)
-        mean_pred = outputs.mean(dim=0)
-        uncertainty = outputs.var(dim=0)
+        probs_samples = []
+        with torch.no_grad():
+            for _ in range(num_samples):
+                logits = super().forward(x)
+                probs_samples.append(F.softmax(logits, dim=1))
 
-        return mean_pred, uncertainty
+        probs_stack = torch.stack(probs_samples)
+        mean_probs = probs_stack.mean(dim=0)
+        predictive_variance = probs_stack.var(dim=0, unbiased=False)
+        # Use log probabilities so downstream consumers get numerically stable logits
+        mean_log_probs = torch.log(mean_probs.clamp_min(1e-8))
+
+        for module, state in bn_modules:
+            module.train(state)
+
+        self.train(previous_mode)
+
+        return mean_probs, predictive_variance, mean_log_probs
 
 
 def create_model(config):

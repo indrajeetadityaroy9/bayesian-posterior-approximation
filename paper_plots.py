@@ -341,7 +341,6 @@ def create_publication_figure_set(results, bayes_error, save_dir):
     )
 
     print(f"\nComplete figure set saved to {save_dir}")
-    print("Generated figures:")
     for name in figures.keys():
         print(f"  - {name}")
 
@@ -350,11 +349,3 @@ def create_publication_figure_set(results, bayes_error, save_dir):
 
 if __name__ == "__main__":
     set_publication_style()
-    print("Publication plotting module loaded successfully!")
-    print("Available functions:")
-    print("  - plot_learning_curves_advanced()")
-    print("  - plot_architecture_selection()")
-    print("  - plot_performance_comparison()")
-    print("  - plot_convergence_analysis()")
-    print("  - plot_statistical_summary()")
-    print("  - create_publication_figure_set()")

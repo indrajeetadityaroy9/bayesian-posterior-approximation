@@ -37,7 +37,8 @@ def create_results_summary_table(experiments_data, save_path=None):
             'Training_Time_Sec': training_time,
             'Mean_Uncertainty': mean_uncertainty,
             'Log_Loss': exp['test_metrics'].get('log_loss', 0.0),
-            'F1_Score': exp['test_metrics'].get('f1_score', 0.0)
+            'F1_Score': exp['test_metrics'].get('f1_score', 0.0),
+            'Logits_File': exp.get('logits_file', '')
         })
 
     df = pd.DataFrame(summary_data)
@@ -250,19 +251,24 @@ def format_console_summary(experiments_data, bayes_error=None):
     return "\n".join(lines)
 
 
-def load_experiments_from_results_dir(results_dir):
+def load_experiments_from_results_dir(results_dir, include_logits=False):
     experiments = []
 
     for exp_dir in results_dir.iterdir():
         if exp_dir.is_dir():
             results_file = exp_dir / "results.json"
             if results_file.exists():
-                try:
-                    with open(results_file, 'r') as f:
-                        exp_data = json.load(f)
-                    experiments.append(exp_data)
-                except (json.JSONDecodeError, KeyError) as e:
-                    print(f"Warning: Could not load {results_file}: {e}")
+                with open(results_file, 'r') as f:
+                    exp_data = json.load(f)
+
+                if include_logits and 'logits_file' in exp_data:
+                    logits_path = exp_dir / exp_data['logits_file']
+                    if logits_path.exists():
+                        exp_data['logits'] = np.load(logits_path)
+                    else:
+                        print(f"Warning: logits file missing for {results_file}")
+
+                experiments.append(exp_data)
 
     return experiments
 

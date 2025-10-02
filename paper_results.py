@@ -57,7 +57,6 @@ class PaperResultsGenerator:
         self.test_size = 100000
 
     def compute_bayes_error(self, n_samples=100000):
-        print("Computing theoretical Bayes error...")
         X_test, y_test = generate_data(n_samples, self.gmm_params)
         y_bayes = classify_with_gmm(X_test, self.gmm_params)
         bayes_error = estimate_error(y_bayes, y_test)
@@ -122,8 +121,6 @@ class PaperResultsGenerator:
         return all_results
 
     def create_publication_plots(self, results, bayes_error):
-        print("Creating publication-quality plots...")
-
         size_to_results = {}
         for result in results:
             size = result['train_size']
@@ -223,8 +220,6 @@ class PaperResultsGenerator:
         plt.close('all')
 
     def save_results_tables(self, results, bayes_error):
-        print("Saving results tables...")
-
         size_to_results = {}
         for result in results:
             size = result['train_size']
@@ -332,12 +327,10 @@ class PaperResultsGenerator:
 
     def run_complete_analysis(self, n_runs=3):
         print("=" * 60)
-        print("RUNNING COMPLETE PAPER-READY ANALYSIS")
-        print("=" * 60)
 
         bayes_error = self.compute_bayes_error()
 
-        print(f"\nRunning {len(self.training_sizes)} × {n_runs} = {len(self.training_sizes) * n_runs} experiments...")
+        print(f"\nRunning {len(self.training_sizes)} × {n_runs} = {len(self.training_sizes) * n_runs} experiments")
         results = self.run_multiple_runs(n_runs)
 
         self.create_publication_plots(results, bayes_error)
@@ -347,15 +340,10 @@ class PaperResultsGenerator:
         statistical_report = self.generate_statistical_report(results, bayes_error)
 
         print("\n" + "=" * 60)
-        print("ANALYSIS COMPLETE")
-        print("=" * 60)
         print(f"Results saved to: {self.results_dir.absolute()}")
         print(f"Generated {len(results)} experiment results")
         print(f"Best accuracy: {max([r['test_accuracy'] for r in results]):.4f}")
         print(f"Bayes error: {bayes_error:.4f}")
-        print("\nFiles generated:")
-        for file_path in sorted(self.results_dir.glob("*")):
-            print(f"  - {file_path.name}")
 
         return results
 

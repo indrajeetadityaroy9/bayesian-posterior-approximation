@@ -362,8 +362,6 @@ def uncertainty_based_active_learning(uncertainties, n_select, strategy='entropy
 
 
 if __name__ == "__main__":
-    print("Testing uncertainty quantification...")
-
     n_samples = 1000
     n_classes = 4
 
@@ -383,4 +381,3 @@ if __name__ == "__main__":
     calibrated_probs = calibrator.fit_transform(logits, y_true)
 
     print(f"Temperature scaling factor: {calibrator.temperature:.3f}")
-    print("Uncertainty quantification tests completed!")

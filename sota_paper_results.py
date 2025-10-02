@@ -127,13 +127,12 @@ class SOTAPaperResultsGenerator:
         return configs
 
     def compute_bayes_error(self, n_samples=100000):
-        print("Computing theoretical Bayes error...")
+        print("Computing theoretical Bayes error")
         X_test, y_test = generate_data(n_samples, self.gmm_params)
         y_bayes = classify_with_gmm(X_test, self.gmm_params)
         bayes_error = estimate_error(y_bayes, y_test)
         print(f"Theoretical Bayes error: {bayes_error:.4f} (computed on {n_samples} samples)")
 
-        # Compute per-class accuracy for diagnostics
         from sklearn.metrics import confusion_matrix
         cm = confusion_matrix(y_test, y_bayes)
         per_class_acc = cm.diagonal() / cm.sum(axis=1)
@@ -166,83 +165,76 @@ class SOTAPaperResultsGenerator:
             'train_size': train_size
         }
 
-        try:
-            if config.uncertainty_method == 'ensemble':
-                ensemble = train_ensemble(X_train, y_train, X_val, y_val, config, config.num_ensemble_models)
+        if config.uncertainty_method == 'ensemble':
+            ensemble = train_ensemble(X_train, y_train, X_val, y_val, config, config.num_ensemble_models)
 
-                ensemble_results = ensemble.predict_with_decomposed_uncertainty(torch.FloatTensor(X_test))
-                test_probs = ensemble_results['predictions'].numpy()
-                test_predictions = np.argmax(test_probs, axis=1)
+            ensemble_results = ensemble.predict_with_decomposed_uncertainty(torch.FloatTensor(X_test))
+            test_probs = ensemble_results['predictions'].numpy()
+            test_predictions = np.argmax(test_probs, axis=1)
+            test_logits = ensemble_results['logits'].cpu().numpy()
 
-                aleatoric_uncertainty = ensemble_results['aleatoric_uncertainty'].numpy()
-                epistemic_uncertainty = ensemble_results['epistemic_uncertainty'].numpy()
-                total_uncertainty = ensemble_results['total_uncertainty'].numpy()
-
-                results.update({
-                    'mean_aleatoric_uncertainty': float(np.mean(aleatoric_uncertainty)),
-                    'mean_epistemic_uncertainty': float(np.mean(epistemic_uncertainty)),
-                    'mean_total_uncertainty': float(np.mean(total_uncertainty))
-                })
-
-            else:
-                trainer = AdvancedTrainer(config)
-                metrics_history = trainer.fit(X_train, y_train, X_val, y_val)
-
-                test_predictions, test_probs, uncertainty_scores = trainer.predict(X_test)
-
-                results['mean_uncertainty'] = float(np.mean(uncertainty_scores))
-                results['training_history'] = [asdict(m) for m in metrics_history[-10:]]
-
-            test_accuracy = np.mean(test_predictions == y_test)
-            test_error = 1.0 - test_accuracy
-
-            calibration_metrics = self.calibration_analyzer.compute_calibration_metrics(y_test, test_probs)
-
-            temp_calibrator = TemperatureCalibrator()
-            logits = np.log(test_probs + 1e-8)
-            try:
-                calibrated_probs = temp_calibrator.fit_transform(logits, y_test)
-                calibrated_metrics = self.calibration_analyzer.compute_calibration_metrics(y_test, calibrated_probs)
-                results['temperature'] = temp_calibrator.temperature
-                results['calibrated_ece'] = calibrated_metrics.expected_calibration_error
-            except Exception as e:
-                print(f"Temperature calibration failed: {e}")
-                results['temperature'] = 1.0
-                results['calibrated_ece'] = calibration_metrics.expected_calibration_error
-
-            training_time = time.time() - start_time
+            aleatoric_uncertainty = ensemble_results['aleatoric_uncertainty'].numpy()
+            epistemic_uncertainty = ensemble_results['epistemic_uncertainty'].numpy()
+            total_uncertainty = ensemble_results['total_uncertainty'].numpy()
 
             results.update({
-                'test_accuracy': test_accuracy,
-                'test_error': test_error,
-                'training_time': training_time,
-                'ece': calibration_metrics.expected_calibration_error,
-                'mce': calibration_metrics.maximum_calibration_error,
-                'brier_score': calibration_metrics.brier_score,
-                'confidence_accuracy_correlation': calibration_metrics.confidence_accuracy_correlation,
-                'prediction_entropy': calibration_metrics.prediction_entropy
+                'mean_aleatoric_uncertainty': float(np.mean(aleatoric_uncertainty)),
+                'mean_epistemic_uncertainty': float(np.mean(epistemic_uncertainty)),
+                'mean_total_uncertainty': float(np.mean(total_uncertainty))
             })
 
-            print(f"  Test accuracy: {test_accuracy:.4f}, ECE: {calibration_metrics.expected_calibration_error:.4f}")
+        else:
+            trainer = AdvancedTrainer(config)
+            metrics_history = trainer.fit(X_train, y_train, X_val, y_val)
 
-        except Exception as e:
-            print(f"  Error in experiment: {e}")
-            results.update({
-                'test_accuracy': 0.0,
-                'test_error': 1.0,
-                'training_time': time.time() - start_time,
-                'ece': 1.0,
-                'error': str(e)
-            })
+            (
+                test_predictions,
+                test_probs,
+                uncertainty_scores,
+                test_logits,
+            ) = trainer.predict(X_test)
+
+            results['mean_uncertainty'] = float(np.mean(uncertainty_scores))
+            results['training_history'] = [asdict(m) for m in metrics_history[-10:]]
+
+        test_accuracy = np.mean(test_predictions == y_test)
+        test_error = 1.0 - test_accuracy
+
+        calibration_metrics = self.calibration_analyzer.compute_calibration_metrics(y_test, test_probs)
+
+        temp_calibrator = TemperatureCalibrator()
+        logits_input = (
+            ensemble_results['logits'].cpu().numpy()
+            if config.uncertainty_method == 'ensemble'
+            else test_logits
+        )
+        calibrated_probs = temp_calibrator.fit_transform(logits_input, y_test)
+        calibrated_metrics = self.calibration_analyzer.compute_calibration_metrics(y_test, calibrated_probs)
+        results['temperature'] = temp_calibrator.temperature
+        results['calibrated_ece'] = calibrated_metrics.expected_calibration_error
+
+        training_time = time.time() - start_time
+
+        logits_filename = f"logits_{config_name}_train{train_size}_run{run_id}.npy"
+        np.save(self.results_dir / logits_filename, test_logits)
+
+        results.update({
+            'test_accuracy': test_accuracy,
+            'test_error': test_error,
+            'training_time': training_time,
+            'ece': calibration_metrics.expected_calibration_error,
+            'mce': calibration_metrics.maximum_calibration_error,
+            'brier_score': calibration_metrics.brier_score,
+            'confidence_accuracy_correlation': calibration_metrics.confidence_accuracy_correlation,
+            'prediction_entropy': calibration_metrics.prediction_entropy,
+            'logits_file': logits_filename
+        })
+
+        print(f"  Test accuracy: {test_accuracy:.4f}, ECE: {calibration_metrics.expected_calibration_error:.4f}")
 
         return results
 
     def run_comprehensive_comparison(self, n_runs=3):
-
-        print("=" * 80)
-        print("RUNNING COMPREHENSIVE MODERN ML COMPARISON")
-        print("=" * 80)
-
         X_test, y_test = generate_data(self.test_size, self.gmm_params)
 
         all_results = []
@@ -309,9 +301,6 @@ class SOTAPaperResultsGenerator:
         return pd.DataFrame(agg_results)
 
     def create_comparison_plots(self, results_df, bayes_error):
-
-        print("Creating SOTA ML comparison plots...")
-
         plt.style.use('seaborn-v0_8-whitegrid')
         plt.rcParams.update({
             'font.size': 12,
@@ -331,8 +320,7 @@ class SOTAPaperResultsGenerator:
                         yerr=config_data['test_accuracy_std'], marker='o',
                         label=config_name, linewidth=2, markersize=6)
 
-        ax1.axhline(y=1-bayes_error, color='red', linestyle='--', linewidth=2,
-                   label='Bayes Optimal', alpha=0.8)
+        ax1.axhline(y=1-bayes_error, color='red', linestyle='--', linewidth=2, label='Bayes Optimal', alpha=0.8)
         ax1.set_xscale('log')
         ax1.set_xlabel('Training Set Size')
         ax1.set_ylabel('Test Accuracy')
@@ -391,11 +379,9 @@ class SOTAPaperResultsGenerator:
         plt.savefig(self.results_dir / 'sota_ml_comparison.png', dpi=300)
         plt.close()
 
-        print(f"  Comparison plots saved to {self.results_dir}")
+        print(f"Comparison plots saved to {self.results_dir}")
 
     def save_comprehensive_results(self, results, results_df, bayes_error):
-        print("Saving comprehensive results...")
-
         with open(self.results_dir / 'raw_sota_results.json', 'w') as f:
             json.dump(results, f, indent=2, default=str)
 
@@ -454,8 +440,6 @@ class SOTAPaperResultsGenerator:
         self.save_comprehensive_results(results, results_df, bayes_error)
 
         print("\n" + "=" * 80)
-        print("SOTA ML ANALYSIS COMPLETE")
-        print("=" * 80)
         print(f"Completed {len(results)} experiments across {len(results_df)} configurations")
         print(f"Best accuracy: {results_df['test_accuracy_mean'].max():.4f}")
         print(f"Best calibration: {results_df['ece_mean'].min():.4f}")
