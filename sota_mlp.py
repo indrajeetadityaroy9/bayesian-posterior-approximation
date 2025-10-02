@@ -284,7 +284,6 @@ class MCDropoutMLP(AdvancedMLP):
 
     def mc_forward(self, x, num_samples=100):
         previous_mode = self.training
-        # Activate dropout while preventing BatchNorm layers from updating statistics
         self.train(True)
 
         bn_modules = []
@@ -302,7 +301,6 @@ class MCDropoutMLP(AdvancedMLP):
         probs_stack = torch.stack(probs_samples)
         mean_probs = probs_stack.mean(dim=0)
         predictive_variance = probs_stack.var(dim=0, unbiased=False)
-        # Use log probabilities so downstream consumers get numerically stable logits
         mean_log_probs = torch.log(mean_probs.clamp_min(1e-8))
 
         for module, state in bn_modules:
