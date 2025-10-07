@@ -1,38 +1,42 @@
-# MLP-Based Bayesian Classifier
-Neural network architectures for approximating Bayesian posterior probabilities in multi-class Gaussian Mixture Model classification, with comprehensive uncertainty quantification and calibration analysis.
+# Bayesian Uncertainty Quantification Framework
 
-## Overview
-Implements two experimental pipelines for comparing neural network performance against the theoretically optimal Bayes classifier:
-- **Basic Pipeline**: Baseline scikit-learn MLP with cross-validation
-- **Advanced Pipeline**: PyTorch architectures with uncertainty quantification
+Bayesian Uncertainty Quantification Framework for developing, benchmarking, and comparing UQ methods with evaluation against ground-truth Bayesian posteriors. The GMM benchmark provides theoretically computable optimal predictions for validating UQ methods.
 
-## Problem Setup
-- **Task**: 4-class classification with 3-dimensional Gaussian Mixture Model
-- **Priors**: Uniform P(C_i) = 0.25
-- **Training Sizes**: 100, 500, 1000, 5000, 10000 samples
-- **Test Set**: 100,000 samples for stable error estimation
-- **Evaluation**: Performance gap from Bayes optimal classifier (10-20% error rate)
+## UQ Methods
 
-## Methods
-### Traditional Baseline
-- Single hidden layer MLP (scikit-learn)
-- ReLU activation, L2 regularization
-- K-fold cross-validation for architecture selection
-- LBFGS optimization
+| Method | Type | Uncertainty | Description |
+|--------|------|-------------|-------------|
+| **Vanilla Softmax** | Baseline | Entropy | Standard neural network with entropy-based uncertainty |
+| **MC Dropout** | Approximate Bayesian | Variance | Monte Carlo Dropout sampling |
+| **Deep Ensemble** | Ensemble | Decomposed | Multiple models with aleatoric/epistemic decomposition |
+| **Bayesian Variational inference** | Bayesian | Epistemic | Variational inference with weight distributions |
 
-### Advanced Architectures
-- **AdvancedMLP**: Residual connections, batch normalization, advanced activations (Swish, Mish, GELU)
-- **MC Dropout**: Monte Carlo Dropout for aleatoric uncertainty estimation
-- **Bayesian MLP**: Variational inference with weight distributions for epistemic uncertainty
-- **Deep Ensembles**: Multiple models for uncertainty decomposition
+## Data
+### Gaussian Mixture Model (4-class)
 
-### Training Techniques
-- AdamW optimizer with warmup + cosine annealing
-- Mixup data augmentation, label smoothing
-- Gradient clipping, early stopping
-- Temperature scaling for post-hoc calibration
+- **Problem**: 4-class classification in 3D with moderately overlapping Gaussian components
+- **Ground Truth**: Exact Bayesian posterior computable, enabling Bayes-gap reporting
+- **Bayes Error**: ~13% depending on seed (empirically measured)
 
-### Uncertainty Quantification
-- Expected Calibration Error (ECE)
-- Maximum Calibration Error (MCE)
-- Brier score
+This synthetic benchmark is intentionally simple: it acts as a unit test for
+uncertainty quality because ground-truth posterior is known.
+
+## Evaluation Metrics
+### Calibration
+- **ECE** (Expected Calibration Error)
+- **MCE** (Maximum Calibration Error)
+- **ACE** (Average Calibration Error)
+- **Brier Score** with decomposition
+- **Temperature Scaling** for post-hoc calibration
+
+### Proper Scoring Rules
+- **NLL** (Negative Log-Likelihood)
+- **CRPS** (Continuous Ranked Probability Score)
+- **RPS** (Ranked Probability Score)
+- **Brier Score** decomposition (uncertainty/resolution/reliability)
+
+### Uncertainty Analysis
+- **Aleatoric Uncertainty**: Irreducible data uncertainty
+- **Epistemic Uncertainty**: Reducible model uncertainty
+- **Mutual Information**: Model disagreement measure
+- **Prediction Intervals**: Confidence intervals
