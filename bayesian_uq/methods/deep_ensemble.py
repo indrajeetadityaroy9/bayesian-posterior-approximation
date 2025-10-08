@@ -69,7 +69,6 @@ class DeepEnsemble(BaseUQMethod):
         from bayesian_uq.core.models import AdvancedMLPConfig
         from bayesian_uq.core.trainer import AdvancedTrainer
 
-        start_time = time.time()
         self.models = []
         self.trainers = []
         all_metrics = []
@@ -138,7 +137,6 @@ class DeepEnsemble(BaseUQMethod):
                     "num_epochs": len(metrics_history),
                 }
             )
-        self.training_time = time.time() - start_time
         self.is_fitted = True
         avg_val_acc = (
             float(np.mean([m["final_val_accuracy"] for m in all_metrics]))
@@ -158,7 +156,6 @@ class DeepEnsemble(BaseUQMethod):
             if all_metrics
             else 0.0,
             "num_epochs": avg_epochs,
-            "training_time": self.training_time,
             "num_models": self.config.num_models,
         }
 
@@ -217,7 +214,6 @@ class DeepEnsemble(BaseUQMethod):
             {
                 "config": self.config.to_dict(),
                 "num_models": len(self.models),
-                "training_time": self.training_time,
                 "is_fitted": self.is_fitted,
             },
             config_path,
@@ -235,7 +231,6 @@ class DeepEnsemble(BaseUQMethod):
         config_path = path.parent / f"{path.stem}_config.pt"
         checkpoint = torch.load(config_path, map_location=self.device)
         self.config = DeepEnsembleConfig(**checkpoint["config"])
-        self.training_time = checkpoint.get("training_time", 0.0)
         self.is_fitted = checkpoint.get("is_fitted", True)
         num_models = int(checkpoint.get("num_models", 0))
         self.models = []

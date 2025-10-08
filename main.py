@@ -84,8 +84,6 @@ def cmd_train(args):
     method = get_method(args.method, config=config)
     metrics = method.fit(data.X_train, data.y_train, data.X_val, data.y_val)
     val_acc = metrics.get("final_val_accuracy", metrics.get("average_val_accuracy", 0))
-    train_time = metrics.get("training_time", 0)
-    print(f"Completed in {train_time:.1f}s")
     print(f"Validation accuracy: {val_acc:.2f}%")
     results = evaluate_method(method, data, benchmark)
     print("\nResults:")
@@ -135,7 +133,6 @@ def cmd_compare(args):
                 "ECE": eval_results["ece"],
                 "Brier": eval_results["brier_score"],
                 "Uncertainty": eval_results["mean_uncertainty"],
-                "Train Time": metrics.get("training_time", 0),
                 "Parameters": cost["total_parameters"],
             }
         )

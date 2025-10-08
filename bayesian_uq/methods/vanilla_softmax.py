@@ -94,11 +94,9 @@ class VanillaSoftmax(BaseUQMethod):
     def fit(self, X_train, y_train, X_val=None, y_val=None):
         from bayesian_uq.core.trainer import AdvancedTrainer
 
-        start_time = time.time()
         self.trainer = AdvancedTrainer(self.mlp_config)
         self.model = self.trainer.model
         metrics_history = self.trainer.fit(X_train, y_train, X_val, y_val)
-        self.training_time = time.time() - start_time
         self.is_fitted = True
         final_metrics = metrics_history[-1]
         return {
@@ -107,7 +105,6 @@ class VanillaSoftmax(BaseUQMethod):
             "final_val_loss": final_metrics.val_loss,
             "final_val_accuracy": final_metrics.val_accuracy,
             "num_epochs": final_metrics.epoch + 1,
-            "training_time": self.training_time,
         }
 
     def predict_with_uncertainty(self, X):
@@ -155,7 +152,6 @@ class VanillaSoftmax(BaseUQMethod):
             {
                 "model_state_dict": self.model.state_dict(),
                 "config": self.config.to_dict(),
-                "training_time": self.training_time,
                 "is_fitted": self.is_fitted,
             },
             path,
@@ -169,5 +165,4 @@ class VanillaSoftmax(BaseUQMethod):
             self.model = AdvancedMLP(self.mlp_config)
             self.model.to(self.device)
         self.model.load_state_dict(checkpoint["model_state_dict"])
-        self.training_time = checkpoint.get("training_time", 0.0)
         self.is_fitted = checkpoint.get("is_fitted", True)

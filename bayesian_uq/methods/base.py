@@ -66,7 +66,6 @@ class BaseUQMethod:
     def __init__(self, config):
         self.config = config
         self.is_fitted = False
-        self.training_time = 0.0
         self.inference_time_per_sample = 0.0
         self._metadata = {}
 
@@ -91,13 +90,11 @@ class BaseUQMethod:
             "method_name": self.__class__.__name__,
             "config": self.config.to_dict(),
             "is_fitted": self.is_fitted,
-            "training_time": self.training_time,
             "metadata": self._metadata,
         }
 
     def get_computational_cost(self):
         return {
-            "training_time_seconds": self.training_time,
             "inference_time_per_sample_ms": self.inference_time_per_sample * 1000,
             "total_parameters": self.get_num_parameters(),
         }
